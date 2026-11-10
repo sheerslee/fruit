@@ -1,0 +1,952 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>果小铺 · 10 种水果下单与查单演示</title>
+<style>
+  :root {
+    --ink: #1f2937;
+    --ink-soft: #4b5563;
+    --line: #d8dee7;
+    --bg: #f5f7fa;
+    --card: #ffffff;
+    --brand: #166534;
+    --brand-soft: #e8f3ec;
+    --accent: #1d4ed8;
+    --danger: #b42318;
+    --warn-bg: #fff7e6;
+    --warn-line: #e0a33a;
+    --ok-bg: #ecfdf3;
+    --ok-line: #157f3d;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+  }
+  [hidden] { display: none !important; }
+  :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  a { color: var(--accent); }
+  .top {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; flex-wrap: wrap;
+    padding: 14px 24px; background: var(--card); border-bottom: 1px solid var(--line);
+  }
+  .brand { font-size: 20px; font-weight: 700; color: var(--brand); }
+  .brand small { font-size: 12px; font-weight: 400; color: var(--ink-soft); margin-left: 8px; }
+  .top-right { display: flex; align-items: center; gap: 18px; font-size: 14px; }
+  .badge {
+    background: var(--brand-soft); color: var(--brand);
+    border-radius: 999px; padding: 4px 12px; font-weight: 600;
+  }
+  .flow {
+    margin: 16px 24px 0; padding: 10px 14px;
+    background: var(--brand-soft); border-left: 4px solid var(--brand);
+    border-radius: 6px; font-size: 14px; color: var(--ink);
+  }
+  main { max-width: 1120px; margin: 0 auto; padding: 20px 24px 40px; }
+  section {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 10px; padding: 20px; margin-bottom: 20px;
+  }
+  h2 { margin: 0 0 4px; font-size: 19px; }
+  h3 { margin: 22px 0 10px; font-size: 15px; }
+  .sub { margin: 0 0 16px; color: var(--ink-soft); font-size: 13px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+  .fruit {
+    border: 1px solid var(--line); border-top: 5px solid var(--line);
+    border-radius: 8px; padding: 12px; background: var(--card);
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .fruit .name { font-weight: 700; font-size: 16px; }
+  .fruit .note { color: var(--ink-soft); font-size: 12px; min-height: 20px; }
+  .fruit .price { color: var(--danger); font-weight: 700; font-size: 18px; }
+  .fruit .unit { color: var(--ink-soft); font-weight: 400; font-size: 12px; }
+  button {
+    font: inherit; cursor: pointer; border-radius: 6px;
+    border: 1px solid var(--brand); background: var(--brand); color: #fff;
+    padding: 8px 14px;
+  }
+  button:hover:not(:disabled) { filter: brightness(1.08); }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  button.ghost { background: var(--card); color: var(--brand); }
+  button.mini { padding: 3px 9px; font-size: 13px; }
+  .fruit button { margin-top: 4px; width: 100%; }
+  .line {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; padding: 9px 0; border-bottom: 1px dashed var(--line); flex-wrap: wrap;
+  }
+  .line .lname { font-weight: 600; }
+  .line .lsub { color: var(--ink-soft); font-size: 13px; }
+  .qty { display: flex; align-items: center; gap: 8px; }
+  .qty span { min-width: 26px; text-align: center; font-variant-numeric: tabular-nums; }
+  .total { text-align: right; margin: 14px 0; font-size: 16px; }
+  .total strong { font-size: 24px; color: var(--danger); }
+  form { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px 16px; margin-top: 18px; }
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .field label { font-size: 13px; font-weight: 600; }
+  .field input {
+    font: inherit; padding: 8px 10px; border: 1px solid var(--line);
+    border-radius: 6px; background: #fff; color: var(--ink);
+  }
+  .field .err { margin: 0; min-height: 18px; font-size: 12px; color: var(--danger); }
+  .form-actions { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .msg { margin: 0; font-size: 13px; }
+  .empty { color: var(--ink-soft); padding: 10px 0; }
+  .notice {
+    margin: 12px 0 0; padding: 9px 12px; font-size: 13px;
+    background: var(--warn-bg); border: 1px solid var(--warn-line); border-radius: 6px;
+  }
+  .success-box {
+    background: var(--ok-bg); border: 1px solid var(--ok-line);
+    border-radius: 8px; padding: 16px; max-width: 560px;
+  }
+  .order-no {
+    display: inline-block; font-family: "SFMono-Regular", Consolas, "Courier New", monospace;
+    font-size: 24px; font-weight: 700; letter-spacing: 1px; color: var(--ink);
+    background: #fff; border: 1px dashed var(--ok-line); border-radius: 6px;
+    padding: 4px 12px; margin: 6px 0 12px;
+  }
+  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .querybar { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
+  .querybar .field { flex: 1 1 260px; }
+  .order-card { margin-top: 14px; border: 1px solid var(--line); border-radius: 8px; padding: 14px; }
+  .order-card .head { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; font-weight: 700; }
+  .order-card .meta { color: var(--ink-soft); font-size: 13px; margin: 6px 0 10px; }
+  .order-card .sum { text-align: right; font-weight: 700; margin-top: 10px; }
+  .recent {
+    width: 100%; border-collapse: collapse; font-size: 14px;
+  }
+  .recent th, .recent td { text-align: left; padding: 9px 8px; border-bottom: 1px solid var(--line); }
+  .recent th { color: var(--ink-soft); font-weight: 600; font-size: 13px; }
+  .recent tbody tr { cursor: pointer; }
+  .recent tbody tr:hover { background: var(--brand-soft); }
+  .recent .mono { font-family: "SFMono-Regular", Consolas, monospace; font-weight: 700; }
+  footer {
+    border-top: 1px solid var(--line); background: var(--card);
+    padding: 18px 24px 30px; font-size: 13px; color: var(--ink-soft);
+  }
+  footer pre {
+    white-space: pre-wrap; font: 12px/1.5 Consolas, "Courier New", monospace;
+    background: var(--bg); border: 1px solid var(--line); border-radius: 6px;
+    padding: 10px; color: var(--ink); max-width: 760px;
+  }
+  code { font-family: Consolas, "Courier New", monospace; }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">果小铺 <small>本地演示 · 零依赖 · 无数据库</small></div>
+  <div class="top-right">
+    <span class="badge" id="cartBadge">购物车 0 件</span>
+    <a href="#query">去订单查询 ↓</a>
+  </div>
+</header>
+
+<div class="flow" id="flowHint">
+  演示动线：① 在下方挑水果点「加入购物车」→ ② 填姓名 / 手机 / 地址 → ③ 提交，记住订单号 → ④ 刷新页面 → ⑤ 到「订单查询」粘贴单号（或直接点最近订单）→ ⑥ 核对金额与收货信息。
+</div>
+
+<main>
+  <section id="catalog" aria-labelledby="catalogTitle">
+    <h2 id="catalogTitle">今日鲜果</h2>
+    <p class="sub">共 10 种，价格以「分」为整数存储，页面展示为元。</p>
+    <div class="grid" id="catalogGrid"></div>
+  </section>
+
+  <section id="checkout" aria-labelledby="checkoutTitle">
+    <h2 id="checkoutTitle">购物车与结算</h2>
+    <p class="sub">数量范围 1–99；下单瞬间会把商品名与单价复制进订单，之后再改目录不会影响历史订单。</p>
+    <div id="cartList"></div>
+    <p class="empty" id="cartEmpty">购物车还是空的，先去上面挑点水果吧。</p>
+    <div class="total">合计 <strong id="cartTotal">¥0.00</strong></div>
+    <form id="orderForm" novalidate>
+      <div class="field">
+        <label for="buyerName">收货人姓名</label>
+        <input id="buyerName" name="name" type="text" maxlength="40" autocomplete="name" placeholder="如：张三">
+        <p class="err" id="errName" role="alert"></p>
+      </div>
+      <div class="field">
+        <label for="buyerPhone">手机号</label>
+        <input id="buyerPhone" name="phone" type="tel" maxlength="11" autocomplete="tel" placeholder="11 位手机号">
+        <p class="err" id="errPhone" role="alert"></p>
+      </div>
+      <div class="field" style="grid-column: 1 / -1;">
+        <label for="buyerAddress">收货地址</label>
+        <input id="buyerAddress" name="address" type="text" maxlength="120" autocomplete="street-address" placeholder="至少 5 个字，如：杭州市西湖区文三路 88 号">
+        <p class="err" id="errAddress" role="alert"></p>
+      </div>
+      <div class="form-actions">
+        <button id="submitBtn" type="submit" disabled>提交订单</button>
+        <p class="msg" id="formError" role="alert"></p>
+      </div>
+    </form>
+  </section>
+
+  <section id="success" hidden aria-labelledby="successTitle">
+    <h2 id="successTitle">下单成功</h2>
+    <div class="success-box">
+      <p class="msg" id="successMsg">请记下订单号，刷新页面后仍可按号查回：</p>
+      <code class="order-no" id="orderNo"></code>
+      <div class="btn-row">
+        <button id="copyBtn" type="button">复制订单号</button>
+        <button id="gotoBtn" class="ghost" type="button">查这一单</button>
+      </div>
+      <p class="msg" id="copyHint" role="status"></p>
+    </div>
+  </section>
+
+  <section id="query" aria-labelledby="queryTitle">
+    <h2 id="queryTitle">订单查询</h2>
+    <p class="sub">按订单号精确查询，或直接点下方「最近订单」任意一行回填。</p>
+    <div class="querybar">
+      <div class="field">
+        <label for="queryInput">订单号</label>
+        <input id="queryInput" type="text" placeholder="FS20261110-0001" autocomplete="off">
+      </div>
+      <button id="queryBtn" type="button">查询</button>
+    </div>
+    <p class="msg" id="queryMsg" role="status"></p>
+    <div class="order-card" id="orderCard" hidden></div>
+    <h3>最近订单</h3>
+    <div id="recentWrap"></div>
+  </section>
+</main>
+
+<footer>
+  <div class="btn-row" style="margin-bottom: 10px;">
+    <button id="selfTestBtn" class="ghost mini" type="button">运行自测</button>
+    <span>自检纯逻辑与存储往返，不产生订单。</span>
+  </div>
+  <pre id="selfTestOut" hidden></pre>
+  <p id="storageNotice" class="notice" hidden></p>
+  <p>
+    数据只存在本机浏览器的 <code>localStorage</code> 单键 <code>fruit-shop:orders:v1</code>：换浏览器 / 换设备 / 清缓存即失效；隐私模式下可能降级为内存，刷新后不再保留（页面会给出提示）。
+    需要复位演示数据时，在浏览器控制台执行 <code>localStorage.removeItem('fruit-shop:orders:v1')</code> 后刷新即可；清空后当日订单序号会从头开始，这是 demo 边界。
+  </p>
+  <p>零外部请求、零依赖、零构建：直接双击本文件即可打开；也可在本目录执行 <code>python -m http.server 8000</code> 后访问 <code>localhost:8000</code>。</p>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+
+  // ---------- 常量与运行时状态（唯一存储键，非密钥） ----------
+  var STORAGE_KEY = 'fruit-shop:orders:v1';
+  var RESET_CMD = "localStorage.removeItem('" + STORAGE_KEY + "')";
+  var MAX_DAILY_SEQ = 9999;
+  var PRODUCTS = [
+    { id: 'F01', name: '红富士苹果',   priceFen: 1280, unit: '斤', tone: '#e8443a', note: '脆甜多汁' },
+    { id: 'F02', name: '香蕉',         priceFen: 650,  unit: '斤', tone: '#f2c133', note: '自然熟成' },
+    { id: 'F03', name: '赣南脐橙',     priceFen: 990,  unit: '斤', tone: '#f28c28', note: '酸甜适中' },
+    { id: 'F04', name: '丹东草莓',     priceFen: 3500, unit: '盒', tone: '#e0415a', note: '当日采摘' },
+    { id: 'F05', name: '阳光玫瑰葡萄', priceFen: 2800, unit: '斤', tone: '#9ac44b', note: '带枝发货' },
+    { id: 'F06', name: '麒麟西瓜',     priceFen: 480,  unit: '斤', tone: '#3fa85f', note: '沙瓤起沙' },
+    { id: 'F07', name: '小台农芒果',   priceFen: 1580, unit: '斤', tone: '#f0a92b', note: '核薄肉厚' },
+    { id: 'F08', name: '云南蓝莓',     priceFen: 1990, unit: '盒', tone: '#5b6fc4', note: '大果径' },
+    { id: 'F09', name: '徐香猕猴桃',   priceFen: 1150, unit: '斤', tone: '#8aa64c', note: '即食软熟' },
+    { id: 'F10', name: '山东大樱桃',   priceFen: 4200, unit: '斤', tone: '#c62f3d', note: '单果 28mm+' }
+  ];
+  var BY_ID = Object.create(null);
+  PRODUCTS.forEach(function (p) { BY_ID[p.id] = p; });
+
+  var CART = Object.create(null);      // productId -> qty
+  var memoryOrders = null;            // null = 存储可用；数组 = 已降级为内存
+  var badOrderCount = 0;              // 本次读取跳过的畸形订单数
+  var lastOrderNo = '';
+
+  // ---------- 纯逻辑（可被页面内自测与外部 QA 直接调用） ----------
+  function fenToYuan(fen) { return '¥' + (fen / 100).toFixed(2); }
+
+  function pad2(n) { return n < 10 ? '0' + n : String(n); }
+
+  function localDatePart(d) {
+    var x = d || new Date();
+    return String(x.getFullYear()) + pad2(x.getMonth() + 1) + pad2(x.getDate());
+  }
+
+  function fmtTime(iso) {
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return String(iso);
+    return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()) +
+      ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+  }
+
+  function normalizeOrderNo(raw) {
+    return String(raw == null ? '' : raw).trim().toUpperCase().replace(/[^A-Z0-9-]/g, '');
+  }
+
+  function cartLines(cart) {
+    var lines = [];
+    Object.keys(cart || CART).forEach(function (id) {
+      var p = BY_ID[id];
+      var qty = cart ? cart[id] : CART[id];
+      if (!p || !Number.isInteger(qty) || qty < 1) return;
+      lines.push({ id: id, name: p.name, priceFen: p.priceFen, unit: p.unit, qty: qty,
+                   subtotalFen: p.priceFen * qty });
+    });
+    return lines;
+  }
+
+  function calcTotal(cart) {
+    return cartLines(cart).reduce(function (sum, l) { return sum + l.subtotalFen; }, 0);
+  }
+
+  function makeOrderNo(orders, datePart) {
+    var dp = datePart || localDatePart();
+    var prefix = 'FS' + dp + '-';
+    var list = orders || [];
+    var used = Object.create(null);
+    var max = 0;
+    list.forEach(function (o) {
+      if (!o || typeof o.orderNo !== 'string') return;
+      var n = normalizeOrderNo(o.orderNo);
+      used[n] = true;
+      if (n.indexOf(prefix) !== 0) return;
+      var tail = n.slice(prefix.length);
+      if (!/^\d{4}$/.test(tail)) return;
+      var v = Number(tail);
+      if (v > max) max = v;
+    });
+    var seq = max + 1;
+    while (seq <= MAX_DAILY_SEQ && used[prefix + String(seq).padStart(4, '0')]) seq++;
+    if (seq > MAX_DAILY_SEQ) return '';   // 显式失败：不生成会被自身正则拒绝的 5 位号
+    return prefix + String(seq).padStart(4, '0');
+  }
+
+  function validateBuyer(buyer) {
+    var name = String(buyer && buyer.name != null ? buyer.name : '').trim();
+    var phone = String(buyer && buyer.phone != null ? buyer.phone : '').trim();
+    var address = String(buyer && buyer.address != null ? buyer.address : '').trim();
+    if (!name || name.length > 40) return { field: 'name', message: '请填写收货人姓名（不超过 40 字）' };
+    if (!/^1\d{10}$/.test(phone)) return { field: 'phone', message: '请填写 11 位手机号' };
+    if (address.length < 5 || address.length > 120) return { field: 'address', message: '请填写完整收货地址（至少 5 字）' };
+    return null;
+  }
+
+  function isOrderLike(o) {
+    if (!o || typeof o !== 'object') return false;
+    if (typeof o.orderNo !== 'string' || !/^FS\d{8}-\d{4}$/.test(o.orderNo)) return false;
+    if (o.status !== 'created') return false;
+    if (typeof o.createdAt !== 'string' || o.createdAt.length > 40) return false;
+    if (!Number.isInteger(o.totalFen) || o.totalFen < 0) return false;
+    if (!Array.isArray(o.items) || o.items.length === 0 || o.items.length > 99) return false;
+    var sum = 0;
+    var itemsOk = o.items.every(function (it) {
+      if (!it || typeof it !== 'object' || typeof it.id !== 'string' || it.id.length > 16) return false;
+      if (typeof it.name !== 'string' || it.name.length > 60) return false;
+      if (typeof it.unit !== 'string' || it.unit.length > 8) return false;
+      if (!Number.isInteger(it.priceFen) || it.priceFen < 0 || it.priceFen > 100000000) return false;
+      if (!Number.isInteger(it.qty) || it.qty < 1 || it.qty > 99) return false;
+      if (!Number.isInteger(it.subtotalFen) || it.subtotalFen !== it.priceFen * it.qty) return false;
+      sum += it.subtotalFen;
+      return true;
+    });
+    if (!itemsOk || o.totalFen !== sum) return false;
+    var b = o.buyer;
+    return !!(b && typeof b.name === 'string' && b.name.length <= 40 &&
+              typeof b.phone === 'string' && b.phone.length <= 20 &&
+              typeof b.address === 'string' && b.address.length <= 120);
+  }
+
+  function findOrder(orders, rawNo) {
+    var no = normalizeOrderNo(rawNo);
+    if (!no || !/^FS\d{8}-\d{4}$/.test(no)) return null;
+    for (var i = 0; i < orders.length; i++) {
+      if (orders[i] && orders[i].orderNo === no) return orders[i];
+    }
+    return null;
+  }
+
+  function sortedOrders(orders) {
+    return orders.slice().sort(function (a, b) {
+      return String(b.createdAt).localeCompare(String(a.createdAt)) ||
+             String(b.orderNo).localeCompare(String(a.orderNo));
+    });
+  }
+
+  // ---------- 存储：读路径与写路径都做异常降级 ----------
+  function getStore() {
+    try { return window.localStorage; } catch (e) { return null; }
+  }
+
+  function setNotice(text) {
+    var el = byId('storageNotice');
+    if (!el) return;
+    el.textContent = text;
+    el.hidden = !text;
+  }
+
+  function degradeOnRead(reason) {
+    memoryOrders = [];
+    setNotice(reason + '。数据仅在本次会话有效；复位指令：' + RESET_CMD);
+  }
+
+  function loadOrders() {
+    if (memoryOrders) return memoryOrders.slice();
+    badOrderCount = 0;
+    var store = getStore();
+    if (!store) { degradeOnRead('本地订单读取失败，已按空订单启动'); return []; }
+    var raw;
+    try {
+      raw = store.getItem(STORAGE_KEY);
+    } catch (e) {
+      degradeOnRead('本地订单读取失败，已按空订单启动'); return [];
+    }
+    if (!raw) { setNotice(''); return []; }
+    var parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch (e) {
+      setNotice('本地订单数据损坏，已按空订单启动；下一次下单会覆盖这些异常数据。复位指令：' + RESET_CMD);
+      return [];
+    }
+    if (!Array.isArray(parsed)) {
+      setNotice('本地订单数据格式异常，已按空订单启动；下一次下单会覆盖这些异常数据。复位指令：' + RESET_CMD);
+      return [];
+    }
+    var good = [];
+    parsed.forEach(function (o) {
+      if (isOrderLike(o)) good.push(o); else badOrderCount++;
+    });
+    setNotice(badOrderCount ? '有 ' + badOrderCount + ' 条订单数据异常，已跳过；下一次下单会覆盖这些异常数据。复位指令：' + RESET_CMD : '');
+    return good;
+  }
+
+  function saveOrders(orders) {
+    if (memoryOrders) {
+      memoryOrders = orders.slice();
+      setNotice('本地存储不可用，订单仅保留在本次会话，刷新后不再保留。复位指令：' + RESET_CMD);
+      return false;
+    }
+    var store = getStore();
+    if (!store) { memoryOrders = orders.slice(); setNotice('本次刷新后订单不再保留（本地存储不可用）'); return false; }
+    try {
+      store.setItem(STORAGE_KEY, JSON.stringify(orders));
+      return true;
+    } catch (e) {
+      memoryOrders = orders.slice();
+      setNotice('本次刷新后订单不再保留（写入本地存储失败）。复位指令：' + RESET_CMD);
+      return false;
+    }
+  }
+
+  // ---------- DOM 工具：所有动态内容一律 textContent ----------
+  function byId(id) { return document.getElementById(id); }
+
+  function mk(tag, text, cls) {
+    var el = document.createElement(tag);
+    if (text != null) el.textContent = String(text);
+    if (cls) el.className = cls;
+    return el;
+  }
+
+  function clear(el) {
+    if (!el) return;
+    if (el.replaceChildren) el.replaceChildren();
+    else while (el.firstChild) el.removeChild(el.firstChild);
+  }
+
+  function setAttr(el, name, value) {
+    if (el && el.setAttribute) el.setAttribute(name, value);
+  }
+
+  // ---------- 渲染 ----------
+  function renderCatalog() {
+    var grid = byId('catalogGrid');
+    if (!grid) return;
+    clear(grid);
+    PRODUCTS.forEach(function (p) {
+      var card = mk('div', null, 'fruit');
+      card.style.borderTopColor = p.tone;
+      card.appendChild(mk('div', p.name, 'name'));
+      card.appendChild(mk('div', p.note, 'note'));
+      var price = mk('div', fenToYuan(p.priceFen), 'price');
+      price.appendChild(mk('span', ' / ' + p.unit, 'unit'));
+      card.appendChild(price);
+      var btn = mk('button', '加入购物车');
+      btn.type = 'button';
+      setAttr(btn, 'data-add', p.id);
+      card.appendChild(btn);
+      grid.appendChild(card);
+    });
+  }
+
+  function renderCart() {
+    var list = byId('cartList');
+    var lines = cartLines();
+    clear(list);
+    lines.forEach(function (l) {
+      var row = mk('div', null, 'line');
+      var left = mk('div');
+      left.appendChild(mk('span', l.name, 'lname'));
+      left.appendChild(mk('span', '  ' + fenToYuan(l.priceFen) + ' / ' + l.unit, 'lsub'));
+      row.appendChild(left);
+      var right = mk('div', null, 'qty');
+      var minus = mk('button', '−', 'mini ghost');
+      minus.type = 'button'; setAttr(minus, 'data-delta', '-1'); setAttr(minus, 'data-id', l.id);
+      var qty = mk('span', l.qty);
+      var plus = mk('button', '+', 'mini ghost');
+      plus.type = 'button'; setAttr(plus, 'data-delta', '1'); setAttr(plus, 'data-id', l.id);
+      right.appendChild(minus); right.appendChild(qty); right.appendChild(plus);
+      right.appendChild(mk('span', fenToYuan(l.subtotalFen), 'lsub'));
+      row.appendChild(right);
+      list.appendChild(row);
+    });
+    var empty = byId('cartEmpty');
+    if (empty) empty.hidden = lines.length > 0;
+    var badge = byId('cartBadge');
+    var count = lines.reduce(function (s, l) { return s + l.qty; }, 0);
+    if (badge) badge.textContent = '购物车 ' + count + ' 件';
+    var total = byId('cartTotal');
+    if (total) total.textContent = fenToYuan(calcTotal());
+    var btn = byId('submitBtn');
+    if (btn) btn.disabled = lines.length === 0;
+  }
+
+  function setFieldError(field, message) {
+    ['name', 'phone', 'address'].forEach(function (f) {
+      var el = byId('err' + f.charAt(0).toUpperCase() + f.slice(1));
+      if (el) el.textContent = f === field ? message : '';
+    });
+    if (field) {
+      var input = byId('buyer' + field.charAt(0).toUpperCase() + field.slice(1));
+      if (input && input.focus) input.focus();
+    }
+  }
+
+  function renderOrderCard(order) {
+    var card = byId('orderCard');
+    if (!card) return;
+    clear(card);
+    if (!order) { card.hidden = true; return; }
+    var head = mk('div', null, 'head');
+    head.appendChild(mk('span', order.orderNo));
+    head.appendChild(mk('span', fenToYuan(order.totalFen)));
+    card.appendChild(head);
+    card.appendChild(mk('div', '下单时间 ' + fmtTime(order.createdAt) + ' · 状态 ' + (order.status === 'created' ? '已创建' : '未知'), 'meta'));
+    order.items.forEach(function (it) {
+      var row = mk('div', null, 'line');
+      row.appendChild(mk('span', it.name + ' × ' + it.qty + ' ' + it.unit));
+      row.appendChild(mk('span', fenToYuan(it.priceFen) + ' / ' + it.unit + ' → ' + fenToYuan(it.subtotalFen)));
+      card.appendChild(row);
+    });
+    card.appendChild(mk('div', '收货人 ' + order.buyer.name + ' · ' + order.buyer.phone, 'meta'));
+    card.appendChild(mk('div', '地址 ' + order.buyer.address, 'meta'));
+    card.appendChild(mk('div', '合计 ' + fenToYuan(order.totalFen), 'sum'));
+    card.hidden = false;
+  }
+
+  function renderRecent(ordersArg) {
+    var wrap = byId('recentWrap');
+    if (!wrap) return;
+    clear(wrap);
+    var orders = sortedOrders(ordersArg || loadOrders());
+    if (orders.length === 0) {
+      wrap.appendChild(mk('p', '暂无订单，先去下一单吧。', 'empty'));
+      return;
+    }
+    var table = mk('table', null, 'recent');
+    var thead = mk('thead');
+    var hr = mk('tr');
+    ['订单号', '时间', '金额', '收货人'].forEach(function (t) { hr.appendChild(mk('th', t)); });
+    thead.appendChild(hr); table.appendChild(thead);
+    var tbody = mk('tbody');
+    orders.forEach(function (o) {
+      var tr = mk('tr');
+      setAttr(tr, 'data-order', o.orderNo);
+      var td1 = mk('td', o.orderNo, 'mono');
+      tr.appendChild(td1);
+      tr.appendChild(mk('td', fmtTime(o.createdAt)));
+      tr.appendChild(mk('td', fenToYuan(o.totalFen)));
+      tr.appendChild(mk('td', o.buyer.name));
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    wrap.appendChild(table);
+  }
+
+  function doQuery(rawNo, ordersArg) {
+    var msg = byId('queryMsg');
+    var input = byId('queryInput');
+    var no = normalizeOrderNo(rawNo != null ? rawNo : (input ? input.value : ''));
+    if (input && no) input.value = no;
+    var order = findOrder(ordersArg || loadOrders(), no);
+    if (!order) {
+      renderOrderCard(null);
+      if (msg) msg.textContent = '未找到该订单。可从下方「最近订单」点选，或核对订单号后重试。';
+      return false;
+    }
+    renderOrderCard(order);
+    if (msg) msg.textContent = '已找到订单 ' + order.orderNo + '。';
+    return true;
+  }
+
+  // ---------- 交互 ----------
+  function addToCart(id) {
+    if (!BY_ID[id]) return;
+    var next = (CART[id] || 0) + 1;
+    CART[id] = Math.min(99, next);
+    renderCart();
+  }
+
+  function updateQty(id, delta) {
+    if (!BY_ID[id] || !CART[id]) return;
+    var next = CART[id] + delta;
+    if (next <= 0) delete CART[id];
+    else CART[id] = Math.min(99, next);
+    renderCart();
+  }
+
+  function buildOrder(orderNo) {
+    var lines = cartLines();
+    return {
+      orderNo: orderNo,
+      createdAt: new Date().toISOString(),
+      items: lines.map(function (l) {
+        return { id: l.id, name: l.name, priceFen: l.priceFen, unit: l.unit,
+                 qty: l.qty, subtotalFen: l.subtotalFen };
+      }),
+      totalFen: lines.reduce(function (s, l) { return s + l.subtotalFen; }, 0),
+      buyer: {
+        name: String(byId('buyerName').value).trim(),
+        phone: String(byId('buyerPhone').value).trim(),
+        address: String(byId('buyerAddress').value).trim()
+      },
+      status: 'created'
+    };
+  }
+
+  function submitOrder(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    var btn = byId('submitBtn');
+    if (btn && btn.disabled) return;            // 连点 / 空车拦截
+    if (btn) btn.disabled = true;               // AC-13：入口首行立即禁用
+    var formError = byId('formError');
+    if (formError) formError.textContent = '';
+
+    if (cartLines().length === 0) {
+      if (formError) formError.textContent = '请先加购商品';
+      renderCart();
+      return;
+    }
+    var buyer = {
+      name: byId('buyerName').value,
+      phone: byId('buyerPhone').value,
+      address: byId('buyerAddress').value
+    };
+    var invalid = validateBuyer(buyer);
+    if (invalid) {
+      setFieldError(invalid.field, invalid.message);
+      if (formError) formError.textContent = invalid.message;
+      if (btn) btn.disabled = false;            // 校验失败允许修正后重提
+      return;
+    }
+    setFieldError(null, '');
+    var orders = loadOrders();                   // 一次提交只读一次，避免渲染函数隐式重置状态
+    var orderNo = makeOrderNo(orders);
+    if (!orderNo) {
+      if (formError) formError.textContent = '当日订单号已用尽（上限 9999），请清空演示数据后再试';
+      if (btn) btn.disabled = false;
+      return;
+    }
+    var order = buildOrder(orderNo);
+    orders.push(order);
+    var persisted = saveOrders(orders);          // false = 已降级为内存，刷新后查不到
+
+    Object.keys(CART).forEach(function (k) { delete CART[k]; });
+    lastOrderNo = order.orderNo;
+    var noEl = byId('orderNo');
+    if (noEl) noEl.textContent = order.orderNo;
+    var successMsg = byId('successMsg');
+    if (successMsg) {
+      successMsg.textContent = persisted
+        ? '请记下订单号，刷新页面后仍可按号查回：'
+        : '订单已生成，但本地存储不可用：本次刷新后订单不再保留，请现在核对下方详情并复制单号。';
+    }
+    var copyHint = byId('copyHint');
+    if (copyHint) copyHint.textContent = '';
+    var success = byId('success');
+    if (success) success.hidden = false;
+    renderCart();                                // 空车 -> 提交按钮保持 disabled
+    renderRecent(orders);
+    doQuery(order.orderNo, orders);              // 成功即展示可核对的详情
+  }
+
+  function copyOrderNo() {
+    var no = lastOrderNo || (byId('orderNo') ? byId('orderNo').textContent : '');
+    var hint = byId('copyHint');
+    var done = function (ok) {
+      if (hint) hint.textContent = ok ? '已复制：' + no + '，刷新后粘贴到查询框即可。'
+                                     : '复制未成功，请手动选中上方订单号复制：' + no;
+    };
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(no).then(function () { done(true); }, function () { done(false); });
+      } else if (document.execCommand) {
+        var ta = document.createElement('textarea');
+        ta.value = no;
+        document.body.appendChild(ta);
+        if (ta.select) ta.select();
+        var ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        done(ok);
+      } else { done(false); }
+    } catch (err) { done(false); }
+  }
+
+  function gotoThisOrder() {
+    var no = lastOrderNo || (byId('orderNo') ? byId('orderNo').textContent : '');
+    var input = byId('queryInput');
+    if (input) input.value = no;
+    doQuery(no);
+    var card = byId('orderCard');
+    if (card && card.scrollIntoView) card.scrollIntoView();
+  }
+
+  function bind() {
+    var grid = byId('catalogGrid');
+    if (grid && grid.addEventListener) {
+      grid.addEventListener('click', function (e) {
+        var t = e.target && e.target.closest ? e.target.closest('[data-add]') : null;
+        if (t && t.getAttribute) addToCart(t.getAttribute('data-add'));
+      });
+    }
+    var list = byId('cartList');
+    if (list && list.addEventListener) {
+      list.addEventListener('click', function (e) {
+        var t = e.target && e.target.closest ? e.target.closest('[data-delta]') : null;
+        if (!t || !t.getAttribute) return;
+        updateQty(t.getAttribute('data-id'), Number(t.getAttribute('data-delta')));
+      });
+    }
+    var form = byId('orderForm');
+    if (form && form.addEventListener) form.addEventListener('submit', submitOrder);
+    var copyBtn = byId('copyBtn');
+    if (copyBtn && copyBtn.addEventListener) copyBtn.addEventListener('click', copyOrderNo);
+    var gotoBtn = byId('gotoBtn');
+    if (gotoBtn && gotoBtn.addEventListener) gotoBtn.addEventListener('click', gotoThisOrder);
+    var queryBtn = byId('queryBtn');
+    if (queryBtn && queryBtn.addEventListener) queryBtn.addEventListener('click', function () { doQuery(); });
+    var queryInput = byId('queryInput');
+    if (queryInput && queryInput.addEventListener) {
+      queryInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') doQuery(); });
+    }
+    var recent = byId('recentWrap');
+    if (recent && recent.addEventListener) {
+      recent.addEventListener('click', function (e) {
+        var t = e.target && e.target.closest ? e.target.closest('[data-order]') : null;
+        if (!t || !t.getAttribute) return;
+        var no = t.getAttribute('data-order');
+        if (queryInput) queryInput.value = no;
+        doQuery(no);
+      });
+    }
+    var selfBtn = byId('selfTestBtn');
+    if (selfBtn && selfBtn.addEventListener) {
+      selfBtn.addEventListener('click', function () {
+        var out = byId('selfTestOut');
+        var r = selfTest();
+        if (out) {
+          out.hidden = false;
+          out.textContent = r.summary + '\n' + r.results.map(function (x) {
+            return (x.ok ? 'PASS ' : 'FAIL ') + x.name + (x.detail ? ' — ' + x.detail : '');
+          }).join('\n');
+        }
+      });
+    }
+  }
+
+  // ---------- 页面内自测（纯逻辑 + 存储往返，不产生页面订单） ----------
+  function selfTest() {
+    var results = [];
+    function check(name, fn) {
+      try {
+        var d = fn();
+        results.push({ name: name, ok: d === true || d === undefined, detail: d === true || d === undefined ? '' : String(d) });
+      } catch (err) {
+        results.push({ name: name, ok: false, detail: 'threw ' + (err && err.message) });
+      }
+    }
+    check('U1 fenToYuan 格式化', function () { return fenToYuan(1280) === '¥12.80' && fenToYuan(480) === '¥4.80' ? true : fenToYuan(1280); });
+    check('U2 calcTotal 整数分无浮点尾数', function () {
+      var t = calcTotal({ F04: 2, F06: 3 });
+      return t === 8440 ? true : 'got ' + t;
+    });
+    check('U3 makeOrderNo 同日 1/2/10 单 + 跳号避碰 + 本地日期 + 上限', function () {
+      var a = makeOrderNo([], '20261110');
+      var b = makeOrderNo([{ orderNo: 'FS20261110-0001' }, { orderNo: 'FS20261110-0002' }], '20261110');
+      var ten = [];
+      for (var i = 1; i <= 10; i++) ten.push({ orderNo: 'FS20261110-' + String(i).padStart(4, '0') });
+      var c = makeOrderNo(ten, '20261110');
+      var jump = makeOrderNo([{ orderNo: 'FS20261110-0001' }, { orderNo: 'FS20261110-0005' }], '20261110');
+      var today = makeOrderNo([]);
+      var capped = [];
+      for (var j = 1; j <= MAX_DAILY_SEQ; j++) capped.push({ orderNo: 'FS20261110-' + String(j).padStart(4, '0') });
+      var overflow = makeOrderNo(capped, '20261110');
+      return (a === 'FS20261110-0001' && b === 'FS20261110-0003' && c === 'FS20261110-0011' &&
+              jump === 'FS20261110-0006' && /^FS\d{8}-0001$/.test(today) && overflow === '')
+        ? true : [a, b, c, jump, today, overflow].join('/');
+    });
+    check('U4 validateBuyer 三项边界', function () {
+      var good = validateBuyer({ name: '张三', phone: '13800138000', address: '杭州市西湖区文三路 88 号' });
+      var badName = validateBuyer({ name: '', phone: '13800138000', address: '杭州市西湖区文三路 88 号' });
+      var badPhone = validateBuyer({ name: '张三', phone: '23800138000', address: '杭州市西湖区文三路 88 号' });
+      var badAddr = validateBuyer({ name: '张三', phone: '13800138000', address: '短' });
+      return (good === null && badName.field === 'name' && badPhone.field === 'phone' && badAddr.field === 'address') ? true : 'validation mismatch';
+    });
+    check('U5 查询输入白名单', function () {
+      return normalizeOrderNo('  fs20261110-0001<script> ') === 'FS20261110-0001SCRIPT' &&
+             normalizeOrderNo('FS-0001!') === 'FS-0001' ? true : normalizeOrderNo('FS-0001!');
+    });
+    check('U6 findOrder 精确匹配与未命中', function () {
+      var os = [{ orderNo: 'FS20261110-0001', totalFen: 100 }];
+      return (findOrder(os, ' fs20261110-0001 ') === os[0] && findOrder(os, 'FS20261110-0002') === null &&
+              findOrder(os, 'not-an-order') === null) ? true : 'find mismatch';
+    });
+    check('U7 订单快照结构可 JSON 往返（逐字段硬编码）', function () {
+      var back = JSON.parse(JSON.stringify(buildTestOrder()));
+      return (back.orderNo === 'FS20261110-0001' && back.status === 'created' &&
+              back.totalFen === 8440 && back.items.length === 2 &&
+              back.items[0].id === 'F04' && back.items[0].name === '丹东草莓' &&
+              back.items[0].priceFen === 3500 && back.items[0].qty === 2 &&
+              back.items[0].subtotalFen === 7000 && back.items[1].subtotalFen === 1440 &&
+              back.buyer.name === '张三' && back.buyer.phone === '13800138000' &&
+              isOrderLike(back)) ? true : 'roundtrip mismatch';
+    });
+    check('U8 isOrderLike 拒绝缺 items / totalFen 的坏条', function () {
+      var o = buildTestOrder();
+      var noItems = Object.assign({}, o); delete noItems.items;
+      var noTotal = Object.assign({}, o); delete noTotal.totalFen;
+      return (!isOrderLike(noItems) && !isOrderLike(noTotal)) ? true : 'bad row accepted';
+    });
+    check('I1 全链路 落库 → 重读 → 查回金额一致', function () {
+      var savedMemory = memoryOrders, savedStore = window.localStorage;
+      var data = Object.create(null);
+      window.localStorage = {
+        getItem: function (k) { return Object.prototype.hasOwnProperty.call(data, k) ? data[k] : null; },
+        setItem: function (k, v) { data[k] = String(v); },
+        removeItem: function (k) { delete data[k]; }
+      };
+      memoryOrders = null;
+      try {
+        var o = buildTestOrder();
+        saveOrders([o]);
+        var reread = loadOrders();
+        var hit = findOrder(reread, o.orderNo);
+        return (reread.length === 1 && hit && hit.totalFen === 8440 && hit.buyer.name === '张三' &&
+                hit.items[0].priceFen === 3500) ? true : 'chain mismatch';
+      } finally { window.localStorage = savedStore; memoryOrders = savedMemory; }
+    });
+    check('I2 空车提交守卫不落库（真实调用 submitOrder）', function () {
+      var btn = byId('submitBtn');
+      var savedDisabled = btn.disabled, savedMemory = memoryOrders, savedStore = window.localStorage;
+      var writes = 0;
+      btn.disabled = true;
+      window.localStorage = {
+        getItem: function () { return null; },
+        setItem: function () { writes++; },
+        removeItem: function () {}
+      };
+      memoryOrders = null;
+      try {
+        submitOrder(null);
+        return (writes === 0 && cartLines({}).length === 0) ? true : 'guard wrote ' + writes;
+      } finally {
+        btn.disabled = savedDisabled;
+        window.localStorage = savedStore;
+        memoryOrders = savedMemory;
+      }
+    });
+    check('I3 写路径抛异常仍可下单并在内存查到', function () {
+      var savedMemory = memoryOrders, savedStore = window.localStorage;
+      window.localStorage = {
+        getItem: function () { return null; },
+        setItem: function () { throw new Error('QuotaExceededError'); },
+        removeItem: function () {}
+      };
+      memoryOrders = null;
+      try {
+        var o = buildTestOrder();
+        var ok = saveOrders([o]);
+        var hit = findOrder(loadOrders(), o.orderNo);
+        return (ok === false && !!hit && memoryOrders !== null) ? true : 'write degrade failed';
+      } finally { window.localStorage = savedStore; memoryOrders = savedMemory; }
+    });
+    check('I4 读路径抛 SecurityError 不白屏', function () {
+      var savedMemory = memoryOrders, savedStore = window.localStorage;
+      window.localStorage = {
+        getItem: function () { throw new Error('SecurityError'); },
+        setItem: function () {}, removeItem: function () {}
+      };
+      memoryOrders = null;
+      try {
+        var got = loadOrders();
+        return (Array.isArray(got) && got.length === 0 && memoryOrders !== null) ? true : 'read degrade failed';
+      } finally { window.localStorage = savedStore; memoryOrders = savedMemory; }
+    });
+    check('I5 损坏 JSON 视为空数组', function () {
+      var savedMemory = memoryOrders, savedStore = window.localStorage;
+      window.localStorage = { getItem: function () { return '{not json'; }, setItem: function () {}, removeItem: function () {} };
+      memoryOrders = null;
+      try {
+        var got = loadOrders();
+        return (Array.isArray(got) && got.length === 0) ? true : 'corrupt json leak';
+      } finally { window.localStorage = savedStore; memoryOrders = savedMemory; }
+    });
+    check('I6 单条畸形跳过且不抛异常', function () {
+      var savedMemory = memoryOrders, savedStore = window.localStorage;
+      var good = buildTestOrder();
+      var payload = JSON.stringify([good, { orderNo: 'BROKEN' }, null, { orderNo: 'FS20261110-9999' }]);
+      window.localStorage = { getItem: function () { return payload; }, setItem: function () {}, removeItem: function () {} };
+      memoryOrders = null;
+      try {
+        var got = loadOrders();
+        return (got.length === 1 && got[0].orderNo === good.orderNo && badOrderCount === 3) ? true : 'got ' + got.length + ' bad=' + badOrderCount;
+      } finally { window.localStorage = savedStore; memoryOrders = savedMemory; }
+    });
+    var pass = results.filter(function (r) { return r.ok; }).length;
+    return { pass: pass, fail: results.length - pass, total: results.length,
+             summary: '页面内自测：' + pass + '/' + results.length + ' 通过', results: results };
+  }
+
+  function buildTestOrder() {
+    return {
+      orderNo: 'FS20261110-0001',
+      createdAt: new Date().toISOString(),
+      items: [
+        { id: 'F04', name: '丹东草莓', priceFen: 3500, unit: '盒', qty: 2, subtotalFen: 7000 },
+        { id: 'F06', name: '麒麟西瓜', priceFen: 480, unit: '斤', qty: 3, subtotalFen: 1440 }
+      ],
+      totalFen: 8440,
+      buyer: { name: '张三', phone: '13800138000', address: '杭州市西湖区文三路 88 号' },
+      status: 'created'
+    };
+  }
+
+  // ---------- 启动 ----------
+  function init() {
+    renderCatalog();
+    renderCart();
+    renderRecent(loadOrders());
+    bind();
+  }
+
+  // 暴露纯逻辑与自测入口：页面内「运行自测」按钮 + 第 6 环 QA 的外部驱动
+  window.FS = {
+    PRODUCTS: PRODUCTS, fenToYuan: fenToYuan, calcTotal: calcTotal,
+    makeOrderNo: makeOrderNo, validateBuyer: validateBuyer,
+    normalizeOrderNo: normalizeOrderNo, isOrderLike: isOrderLike,
+    findOrder: findOrder, loadOrders: loadOrders, saveOrders: saveOrders,
+    cartLines: cartLines, fmtTime: fmtTime, STORAGE_KEY: STORAGE_KEY
+  };
+  window.__fruitShopSelfTest = selfTest;
+  init();
+})();
+</script>
+</body>
+</html>

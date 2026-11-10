@@ -1,0 +1,10 @@
+services:
+  fruit-shop:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: fruit-shop:local
+    container_name: fruit-shop
+    ports:
+      - "8080:80"
+    restart: unless-stopped

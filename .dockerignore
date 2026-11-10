@@ -1,0 +1,10 @@
+# 构建上下文只需要 index.html / nginx.conf / Dockerfile，其余都不进镜像
+.git
+.github
+.workbuddy
+.gstack
+gstack
+tests
+README.md
+*.md
+docker-compose.yml

@@ -1,0 +1,9 @@
+# 本地过程文档与工作区状态：含本机绝对路径和 git 身份信息，仓库是公开的，不上传
+gstack/
+.workbuddy/
+.gstack/
+
+# 系统与编辑器
+.DS_Store
+Thumbs.db
+*.log

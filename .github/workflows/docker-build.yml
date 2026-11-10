@@ -1,0 +1,54 @@
+name: docker-build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t fruit-shop:ci .
+
+      - name: Start container
+        run: docker run -d --name fruit-shop -p 8080:80 fruit-shop:ci
+
+      - name: HTTP smoke test + health check
+        run: |
+          set -euxo pipefail
+          for i in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:8080/ -o /tmp/fruit.html; then break; fi
+            sleep 1
+          done
+          test -s /tmp/fruit.html
+          grep -q "果小铺" /tmp/fruit.html
+          grep -q 'charset="utf-8"' /tmp/fruit.html
+          echo "--- nginx response headers ---"
+          curl -fsSI http://127.0.0.1:8080/ | head -12
+          echo "--- container health ---"
+          docker inspect --format='{{.State.Health.Status}}' fruit-shop | tee /tmp/health.txt
+          grep -qx healthy /tmp/health.txt
+
+      - name: Functional QA (21 cases)
+        run: node tests/qa-fruit-shop-runner.mjs > /tmp/qa.json || (cat /tmp/qa.json; exit 1)
+
+      - name: QA summary
+        if: always()
+        run: |
+          if [ -s /tmp/qa.json ]; then
+            python3 -c "import json; d=json.load(open('/tmp/qa.json')); print('QA: %s/%s passed, %s failed' % (d['passed'], d['total'], d['failed']))"
+          fi
+
+      - name: Container logs on failure
+        if: failure()
+        run: docker logs fruit-shop || true
