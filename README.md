@@ -9,7 +9,7 @@
 需要 Docker Desktop 或 Docker Engine + Compose v2。在仓库根目录执行：
 
 ```bash
-git clone git@github.com:sheerslee/fruit.git
+git clone https://github.com/sheerslee/fruit.git
 cd fruit
 docker compose up -d --build
 ```

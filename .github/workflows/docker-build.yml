@@ -25,28 +25,66 @@ jobs:
 
       - name: HTTP smoke test + health check
         run: |
-          set -euxo pipefail
-          for i in $(seq 1 20); do
-            if curl -fsS http://127.0.0.1:8080/ -o /tmp/fruit.html; then break; fi
+          set -euo pipefail
+
+          # 1) 等 nginx 真正开始提供页面（docker run 成功 != 服务就绪）
+          served=0
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8080/ -o /tmp/fruit.html 2>/dev/null; then
+              served=1
+              break
+            fi
             sleep 1
           done
-          test -s /tmp/fruit.html
-          grep -q "果小铺" /tmp/fruit.html
-          grep -q 'charset="utf-8"' /tmp/fruit.html
+          if [ "$served" -ne 1 ]; then
+            echo "::error::容器 30s 内未通过 HTTP 提供页面"
+            docker ps -a || true
+            docker logs fruit-shop || true
+            exit 1
+          fi
+
+          test -s /tmp/fruit.html || { echo "::error::首页响应为空"; exit 1; }
+          grep -q "果小铺" /tmp/fruit.html || { echo "::error::首页缺少站点标题"; exit 1; }
+          grep -q 'charset="utf-8"' /tmp/fruit.html || { echo "::error::首页缺少 UTF-8 声明"; exit 1; }
+          echo "首页字节数: $(wc -c < /tmp/fruit.html) / 仓库文件: $(wc -c < index.html)"
+
+          # 2) 响应头先落盘再打印，避免 pipefail 下 curl | head 触发 SIGPIPE
           echo "--- nginx response headers ---"
-          curl -fsSI http://127.0.0.1:8080/ | head -12
-          echo "--- container health ---"
-          docker inspect --format='{{.State.Health.Status}}' fruit-shop | tee /tmp/health.txt
-          grep -qx healthy /tmp/health.txt
+          curl -fsSI http://127.0.0.1:8080/ -o /tmp/headers.txt
+          cat /tmp/headers.txt
+
+          # 3) HEALTHCHECK 有 start-period 5s + interval 10s，必须轮询等待，不能一次断言
+          health=""
+          for i in $(seq 1 45); do
+            health="$(docker inspect --format='{{.State.Health.Status}}' fruit-shop)"
+            if [ "$health" = "healthy" ] || [ "$health" = "unhealthy" ]; then
+              break
+            fi
+            sleep 2
+          done
+          echo "final health: $health"
+          if [ "$health" != "healthy" ]; then
+            echo "::error::容器健康状态最终为 '$health'（期望 healthy）"
+            docker inspect --format='{{json .State.Health}}' fruit-shop || true
+            docker logs fruit-shop || true
+            exit 1
+          fi
 
       - name: Functional QA (21 cases)
-        run: node tests/qa-fruit-shop-runner.mjs > /tmp/qa.json || (cat /tmp/qa.json; exit 1)
+        run: |
+          set -euo pipefail
+          if ! node tests/qa-fruit-shop-runner.mjs > /tmp/qa.json; then
+            echo "::error::21 条 QA 用例存在失败项"
+            cat /tmp/qa.json || true
+            exit 1
+          fi
+          cat /tmp/qa.json
 
       - name: QA summary
         if: always()
         run: |
           if [ -s /tmp/qa.json ]; then
-            python3 -c "import json; d=json.load(open('/tmp/qa.json')); print('QA: %s/%s passed, %s failed' % (d['passed'], d['total'], d['failed']))"
+            python3 -c "import json; d=json.load(open('/tmp/qa.json')); print('QA: %s/%s passed, %s failed' % (d['passed'], d['total'], d['failed']))" | tee -a "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Container logs on failure
