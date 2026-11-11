@@ -14,7 +14,7 @@ cd fruit
 docker compose up -d --build
 ```
 
-打开 <http://localhost:8080>。
+打开 <http://localhost:8080>（端口被占用时见下方「8080 端口被占用」）。
 
 验证容器确实在跑：
 
@@ -23,7 +23,8 @@ curl -fsS http://localhost:8080/ | grep "果小铺"
 docker inspect --format='{{.State.Health.Status}}' fruit-shop
 ```
 
-第二条应输出 `healthy`。停止并清理：
+第二条应输出 `healthy`。改过端口的话，把命令里的 `8080` 换成 `FRUIT_PORT` 的值。
+停止并清理：
 
 ```bash
 docker compose down
@@ -37,6 +38,29 @@ docker run -d --name fruit-shop -p 8080:80 --restart unless-stopped fruit-shop:l
 ```
 
 停止：`docker rm -f fruit-shop`。
+
+### 8080 端口被占用
+
+报错 `Bind for 0.0.0.0:8080 failed: port is already allocated` 说明宿主机 8080
+已被别的进程或容器占用（常见于本机还跑着其他业务容器）。先只读排查，
+别为了这个 demo 停掉别人的服务：
+
+```bash
+docker ps -a --format 'table {{.Names}}\t{{.Ports}}\t{{.Status}}'
+ss -ltnp | grep ':8080'
+```
+
+给 fruit-shop 换一个端口即可，compose 支持 `FRUIT_PORT` 覆盖（默认仍是 8080，
+云端 CI 不受影响）：
+
+```bash
+FRUIT_PORT=8081 docker compose up -d --build
+curl -fsS http://localhost:8081/ | grep "果小铺"
+```
+
+不想每次带变量，把 `FRUIT_PORT=8081` 写进仓库根目录的 `.env`（Compose 自动读取，
+该文件已被 `.gitignore` 排除）。用 `docker run` 的等价写法是把 `-p 8080:80`
+改成 `-p 8081:80`；8081 也被占就换 18080 等冷门端口。
 
 ### 国内网络拉不到 Docker Hub 时
 
@@ -96,9 +120,10 @@ BuildKit 用独立 `docker-container` driver 时不继承 daemon 的 mirror 配�
 只想让本仓库免带变量、不动系统配置，就在仓库根目录放一个 `.env`（Compose 会自动读取）：
 
 ```bash
-printf 'BASE_IMAGE=docker.m.daocloud.io/library/nginx:1.27-alpine\n' > .env
+printf 'BASE_IMAGE=docker.m.daocloud.io/library/nginx:1.27-alpine\n' >> .env
 ```
 
+同一份 `.env` 里可以再写一行 `FRUIT_PORT=8081` 来避开端口冲突。
 `.env` 已被 `.gitignore` 排除，不会推到公开仓库，也不会影响 GitHub Actions 云端构建。
 
 ### WSL 报 `docker-credential-desktop.exe` 找不到
