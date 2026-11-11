@@ -3,6 +3,9 @@ gstack/
 .workbuddy/
 .gstack/
 
+# 本机 Compose 变量：含国内镜像源，不进公开仓库
+.env
+
 # 系统与编辑器
 .DS_Store
 Thumbs.db

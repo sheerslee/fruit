@@ -70,6 +70,37 @@ docker tag docker.m.daocloud.io/library/nginx:1.27-alpine nginx:1.27-alpine
 docker compose up -d --build
 ```
 
+### 不想每次带 `BASE_IMAGE`：给 Docker 配镜像加速器
+
+上面的环境变量只对这一个仓库生效。想让所有 `docker pull` 和 `FROM docker.io/...`
+都自动走国内源，给 Docker daemon 配 `registry-mirrors`（Linux 下是
+`/etc/docker/daemon.json`，Docker Desktop 在设置界面里配）。WSL 默认就是 root，
+下面命令不用加 `sudo`；其他发行版按需补上。
+
+```bash
+mkdir -p /etc/docker && printf '{"registry-mirrors": ["https://docker.m.daocloud.io", "https://docker.1ms.run", "https://hub.rat.dev"]}\n' > /etc/docker/daemon.json && systemctl restart docker
+```
+
+验证加速器已加载，并确认官方 tag 能拉下来（这一步走的是 mirror，不是 Docker Hub）：
+
+```bash
+docker info --format '{{json .RegistryConfig.Mirrors}}'
+docker pull nginx:1.27-alpine
+```
+
+配好之后，本仓库直接 `docker compose up -d --build` 即可，`Dockerfile` 的默认值不用改。
+边界：`registry-mirrors` 只对 `docker.io` 生效，`ghcr.io` / `quay.io` 仍走各自官方地址；
+BuildKit 用独立 `docker-container` driver 时不继承 daemon 的 mirror 配置，那种场景
+仍在命令里显式带 `BASE_IMAGE`。
+
+只想让本仓库免带变量、不动系统配置，就在仓库根目录放一个 `.env`（Compose 会自动读取）：
+
+```bash
+printf 'BASE_IMAGE=docker.m.daocloud.io/library/nginx:1.27-alpine\n' > .env
+```
+
+`.env` 已被 `.gitignore` 排除，不会推到公开仓库，也不会影响 GitHub Actions 云端构建。
+
 ### WSL 报 `docker-credential-desktop.exe` 找不到
 
 如果 `load metadata` 阶段报 `error getting credentials - err: exec:
