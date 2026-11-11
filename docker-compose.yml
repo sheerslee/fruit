@@ -3,6 +3,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        BASE_IMAGE: ${BASE_IMAGE:-nginx:1.27-alpine}
     image: fruit-shop:local
     container_name: fruit-shop
     ports:

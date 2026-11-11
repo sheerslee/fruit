@@ -38,6 +38,38 @@ docker run -d --name fruit-shop -p 8080:80 --restart unless-stopped fruit-shop:l
 
 停止：`docker rm -f fruit-shop`。
 
+### 国内网络拉不到 Docker Hub 时
+
+如果 `docker compose up -d --build` 报 `failed to resolve source metadata for
+docker.io/library/nginx:1.27-alpine` 或 `i/o timeout`，是 Docker Hub 不可达，不是代码问题。
+用环境变量把基础镜像换到可直连的镜像源：
+
+```bash
+BASE_IMAGE=docker.m.daocloud.io/library/nginx:1.27-alpine docker compose up -d --build
+```
+
+先测源是否在线（返回 `401` 是正常的，表示 registry 在响应）：
+
+```bash
+curl -sS -m 10 -o /dev/null -w "%{http_code}\n" https://docker.m.daocloud.io/v2/
+```
+
+备用源任选其一，三者提供的是同一份 `nginx:1.27-alpine` 镜像（manifest digest 一致）：
+
+```bash
+BASE_IMAGE=docker.1ms.run/library/nginx:1.27-alpine docker compose up -d --build
+BASE_IMAGE=hub.rat.dev/library/nginx:1.27-alpine docker compose up -d --build
+```
+
+`Dockerfile` 的默认值没有改，所以 GitHub Actions 云端构建仍走 Docker Hub 官方地址。
+不想改任何文件时，也可以先预拉镜像再打上官方 tag 后重跑：
+
+```bash
+docker pull docker.m.daocloud.io/library/nginx:1.27-alpine
+docker tag docker.m.daocloud.io/library/nginx:1.27-alpine nginx:1.27-alpine
+docker compose up -d --build
+```
+
 ## 不用 Docker
 
 直接双击 `index.html` 用 `file://` 打开即可，功能一致。需要 HTTP 环境时：
