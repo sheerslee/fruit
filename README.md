@@ -70,6 +70,42 @@ docker tag docker.m.daocloud.io/library/nginx:1.27-alpine nginx:1.27-alpine
 docker compose up -d --build
 ```
 
+### WSL 报 `docker-credential-desktop.exe` 找不到
+
+如果 `load metadata` 阶段报 `error getting credentials - err: exec:
+"docker-credential-desktop.exe": executable file not found in $PATH`，这既不是镜像源的问题，
+也不是 `Dockerfile` 的问题：Docker 客户端配置里残留了 Docker Desktop 的凭据助手
+`credsStore: desktop.exe`，而对应程序已随 Docker Desktop 卸载消失（常见于 WSL 里独立安装
+Docker Engine 的场景）。`/usr/bin/docker-credential-desktop.exe` 往往只是一个失效的软链。
+
+先确认（下面以 WSL 默认 root 用户为例，其他用户把 `/root` 换成自己的 HOME）：
+
+```bash
+ls -la /root/.docker/ && cat /root/.docker/config.json && (ls -l /usr/bin/docker-credential-desktop.exe 2>/dev/null || echo "helper missing or dead link")
+```
+
+看到 `"credsStore": "desktop.exe"` 且该 exe 是死链或不存在即可确诊。拉取公开镜像不需要
+任何凭据，备份后去掉这个字段（用 python3 保留配置里的其余字段）：
+
+```bash
+cp /root/.docker/config.json /root/.docker/config.json.bak-fruit && python3 -c "import json,pathlib;p=pathlib.Path('/root/.docker/config.json');d=json.loads(p.read_text() or '{}');d.pop('credsStore',None);d.pop('credHelpers',None);p.write_text(json.dumps(d,indent=2)+'\n')" && cat /root/.docker/config.json
+```
+
+没有 python3 时的等价降级（配置只有 `auths` 和 `credsStore` 时直接覆盖即可）：
+
+```bash
+cp /root/.docker/config.json /root/.docker/config.json.bak-fruit && printf '{"auths": {}}\n' > /root/.docker/config.json && cat /root/.docker/config.json
+```
+
+不想动全局配置，也可以用一个干净的 `DOCKER_CONFIG` 目录临时绕开，先确认 compose 插件
+在新目录下仍可用：
+
+```bash
+mkdir -p /root/.docker-fruit && printf '{}\n' > /root/.docker-fruit/config.json && DOCKER_CONFIG=/root/.docker-fruit docker compose version && DOCKER_CONFIG=/root/.docker-fruit BASE_IMAGE=docker.m.daocloud.io/library/nginx:1.27-alpine docker compose up -d --build
+```
+
+回滚：`cp /root/.docker/config.json.bak-fruit /root/.docker/config.json`。
+
 ## 不用 Docker
 
 直接双击 `index.html` 用 `file://` 打开即可，功能一致。需要 HTTP 环境时：
